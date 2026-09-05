@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NanoContainer Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0f0f12;
+            --bg-secondary: #1a1a24;
+            --bg-tertiary: #252532;
+            --bg-card: #1e1e2a;
+            --text-primary: #e4e4e7;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --accent: #22d3ee;
+            --accent-dim: #0e7490;
+            --green: #22c55e;
+            --green-dim: #166534;
+            --red: #ef4444;
+            --red-dim: #991b1b;
+            --yellow: #eab308;
+            --yellow-dim: #854d0e;
+            --border: #27272a;
+            --sidebar-width: 240px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            height: 100vh;
+            position: fixed;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent), var(--green));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            color: var(--bg-primary);
+        }
+
+        .logo-text {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .nav {
+            flex: 1;
+            padding: 12px 0;
+            overflow-y: auto;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--bg-tertiary);
+            color: var(--accent);
+            border-left-color: var(--accent);
+        }
+
+        .nav-item svg {
+            width: 20px;
+            height: 20px;
+            opacity: 0.7;
+        }
+
+        .nav-item.active svg {
+            opacity: 1;
+        }
+
+        .main {
+            margin-left: var(--sidebar-width);
+            flex: 1;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .header-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .content {
+            padding: 24px;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .stat-value.accent {
+            color: var(--accent);
+        }
+
+        .stat-value.green {
+            color: var(--green);
+        }
+
+        .stat-value.yellow {
+            color: var(--yellow);
+        }
+
+        .stat-value.red {
+            color: var(--red);
+        }
+
+        .stat-bar {
+            height: 4px;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+            margin-top: 12px;
+            overflow: hidden;
+        }
+
+        .stat-bar-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        .stat-bar-fill.accent {
+            background: var(--accent);
+        }
+
+        .stat-bar-fill.green {
+            background: var(--green);
+        }
+
+        .stat-bar-fill.yellow {
+            background: var(--yellow);
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .card-body {
+            padding: 16px 20px;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table th,
+        .table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .table th {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .table td {
+            font-size: 14px;
+        }
+
+        .table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .table tr:hover td {
+            background: var(--bg-tertiary);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-running {
+            background: var(--green-dim);
+            color: var(--green);
+        }
+
+        .badge-stopped {
+            background: var(--red-dim);
+            color: var(--red);
+        }
+
+        .badge-pending {
+            background: var(--yellow-dim);
+            color: var(--yellow);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: var(--border);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: var(--bg-primary);
+            border-color: var(--accent);
+        }
+
+        .btn-primary:hover {
+            background: #06b6d4;
+        }
+
+        .btn-success {
+            background: var(--green-dim);
+            color: var(--green);
+            border-color: var(--green-dim);
+        }
+
+        .btn-success:hover {
+            background: var(--green);
+            color: var(--bg-primary);
+        }
+
+        .btn-danger {
+            background: var(--red-dim);
+            color: var(--red);
+            border-color: var(--red-dim);
+        }
+
+        .btn-danger:hover {
+            background: var(--red);
+            color: var(--bg-primary);
+        }
+
+        .btn-sm {
+            padding: 4px 10px;
+            font-size: 12px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 6px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .form-input,
+        .form-select,
+        .form-textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
+            border-color: var(--accent);
+        }
+
+        .form-textarea {
+            min-height: 120px;
+            font-family: monospace;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .activity-icon.create {
+            background: var(--green-dim);
+            color: var(--green);
+        }
+
+        .activity-icon.stop {
+            background: var(--red-dim);
+            color: var(--red);
+        }
+
+        .activity-icon.start {
+            background: var(--accent-dim);
+            color: var(--accent);
+        }
+
+        .activity-text {
+            flex: 1;
+        }
+
+        .activity-title {
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+
+        .activity-time {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .logs-container {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            font-family: monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            max-height: 500px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .logs-line-stdout {
+            color: var(--text-primary);
+        }
+
+        .logs-line-stderr {
+            color: var(--red);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+
+        .metric-name {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .metric-value {
+            font-size: 14px;
+            font-weight: 500;
+            font-family: monospace;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 20px;
+            line-height: 1;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .refresh-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+
+            .main {
+                margin-left: 0;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">NC</div>
+            <span class="logo-text">NanoContainer</span>
+        </div>
+        <nav class="nav">
+            <div class="nav-item active" data-page="dashboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7" rx="1"/>
+                    <rect x="14" y="3" width="7" height="7" rx="1"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1"/>
+                    <rect x="14" y="14" width="7" height="7" rx="1"/>
+                </svg>
+                Dashboard
+            </div>
+            <div class="nav-item" data-page="containers">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="6" width="20" height="12" rx="2"/>
+                    <path d="M12 12h.01"/>
+                    <path d="M17 12h.01"/>
+                    <path d="M7 12h.01"/>
+                </svg>
+                Containers
+            </div>
+            <div class="nav-item" data-page="images">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                </svg>
+                Images
+            </div>
+            <div class="nav-item" data-page="compose">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                    <path d="M2 17l10 5 10-5"/>
+                    <path d="M2 12l10 5 10-5"/>
+                </svg>
+                Compose
+            </div>
+            <div class="nav-item" data-page="logs">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+                Logs
+            </div>
+            <div class="nav-item" data-page="metrics">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="20" x2="18" y2="10"/>
+                    <line x1="12" y1="20" x2="12" y2="4"/>
+                    <line x1="6" y1="20" x2="6" y2="14"/>
+                </svg>
+                Metrics
+            </div>
+        </nav>
+    </aside>
+
+    <main class="main">
+        <header class="header">
+            <h1 class="header-title" id="pageTitle">Dashboard</h1>
+            <div class="header-status">
+                <div class="refresh-indicator" id="refreshIndicator">
+                    <div class="spinner" style="display:none" id="refreshSpinner"></div>
+                    <span id="refreshText">Auto-refresh: 5s</span>
+                </div>
+                <div class="status-dot"></div>
+                <span>System Online</span>
+            </div>
+        </header>
+
+        <div class="content">
+            <div id="page-dashboard" class="page active">
+                <div class="stats-grid" id="statsGrid"></div>
+                <div class="grid-2">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">Recent Activity</span>
+                        </div>
+                        <div class="card-body" id="activityList">
+                            <div class="empty-state">
+                                <p>No recent activity</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">System Info</span>
+                        </div>
+                        <div class="card-body" id="systemInfo">
+                            <div class="empty-state">
+                                <p>Loading system info...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-containers" class="page">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Containers</span>
+                        <div class="btn-group">
+                            <button class="btn btn-sm" id="btnRefreshContainers">Refresh</button>
+                            <button class="btn btn-sm btn-primary" onclick="openModal('createContainer')">+ New Container</button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="padding:0">
+                        <div id="containersTable"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-images" class="page">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Images</span>
+                        <div class="btn-group">
+                            <button class="btn btn-sm" id="btnRefreshImages">Refresh</button>
+                            <button class="btn btn-sm btn-primary" onclick="openModal('pullImage')">Pull Image</button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="padding:0">
+                        <div id="imagesTable"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-compose" class="page">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Compose Stacks</span>
+                        <div class="btn-group">
+                            <button class="btn btn-sm" id="btnRefreshCompose">Refresh</button>
+                            <button class="btn btn-sm btn-primary" onclick="openModal('deployStack')">Deploy Stack</button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="padding:0">
+                        <div id="composeTable"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-logs" class="page">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Container Logs</span>
+                        <div class="btn-group">
+                            <select class="form-select" id="logContainerSelect" style="width:auto;min-width:200px">
+                                <option value="">Select a container...</option>
+                            </select>
+                            <button class="btn btn-sm" id="btnRefreshLogs">Refresh</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="logs-container" id="logsOutput">Select a container to view logs...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-metrics" class="page">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Prometheus Metrics</span>
+                        <button class="btn btn-sm" id="btnRefreshMetrics">Refresh</button>
+                    </div>
+                    <div class="card-body">
+                        <div class="logs-container" id="metricsOutput" style="white-space:pre;font-family:monospace">
+Loading metrics...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <span class="modal-title" id="modalTitle"></span>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-footer" id="modalFooter"></div>
+        </div>
+    </div>
+
+    <script>
+    const API = '/api';
+    let currentPage = 'dashboard';
+    let refreshInterval = null;
+    let activities = [];
+
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', () => {
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+            currentPage = item.dataset.page;
+            document.getElementById('pageTitle').textContent = item.textContent.trim();
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('page-' + currentPage).classList.add('active');
+            loadPage(currentPage);
+        });
+    });
+
+    function formatBytes(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    function formatUptime(seconds) {
+        const d = Math.floor(seconds / 86400);
+        const h = Math.floor((seconds % 86400) / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        if (d > 0) return d + 'd ' + h + 'h ' + m + 'm';
+        if (h > 0) return h + 'h ' + m + 'm';
+        return m + 'm';
+    }
+
+    function timeAgo(date) {
+        const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+        if (seconds < 60) return 'just now';
+        if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+        if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+        return Math.floor(seconds / 86400) + 'd ago';
+    }
+
+    async function apiGet(path) {
+        try {
+            const resp = await fetch(API + path);
+            return await resp.json();
+        } catch (e) {
+            console.error('API error:', e);
+            return { success: false, error: e.message };
+        }
+    }
+
+    async function apiPost(path, body) {
+        try {
+            const resp = await fetch(API + path, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            return await resp.json();
+        } catch (e) {
+            console.error('API error:', e);
+            return { success: false, error: e.message };
+        }
+    }
+
+    async function apiDelete(path) {
+        try {
+            const resp = await fetch(API + path, { method: 'DELETE' });
+            return await resp.json();
+        } catch (e) {
+            console.error('API error:', e);
+            return { success: false, error: e.message };
+        }
+    }
+
+    function addActivity(type, title) {
+        activities.unshift({ type, title, time: new Date() });
+        if (activities.length > 20) activities.pop();
+        renderActivity();
+    }
+
+    function renderActivity() {
+        const el = document.getElementById('activityList');
+        if (activities.length === 0) {
+            el.innerHTML = '<div class="empty-state"><p>No recent activity</p></div>';
+            return;
+        }
+        el.innerHTML = activities.map(a => `
+            <div class="activity-item">
+                <div class="activity-icon ${a.type}">
+                    ${a.type === 'create' ? '+' : a.type === 'stop' ? '■' : '▶'}
+                </div>
+                <div class="activity-text">
+                    <div class="activity-title">${a.title}</div>
+                    <div class="activity-time">${timeAgo(a.time)}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function loadDashboard() {
+        const res = await apiGet('/stats');
+        if (!res.success) return;
+        const s = res.data;
+
+        document.getElementById('statsGrid').innerHTML = `
+            <div class="stat-card">
+                <div class="stat-label">CPU Usage</div>
+                <div class="stat-value accent">${s.cpu_percent.toFixed(1)}%</div>
+                <div class="stat-bar"><div class="stat-bar-fill accent" style="width:${s.cpu_percent}%"></div></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Memory Usage</div>
+                <div class="stat-value green">${s.memory_percent.toFixed(1)}%</div>
+                <div class="stat-bar"><div class="stat-bar-fill green" style="width:${s.memory_percent}%"></div></div>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:8px">${formatBytes(s.memory_used_bytes)} / ${formatBytes(s.memory_total_bytes)}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Disk Usage</div>
+                <div class="stat-value yellow">${s.disk_percent.toFixed(1)}%</div>
+                <div class="stat-bar"><div class="stat-bar-fill yellow" style="width:${s.disk_percent}%"></div></div>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:8px">${formatBytes(s.disk_used_bytes)} / ${formatBytes(s.disk_total_bytes)}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Containers</div>
+                <div class="stat-value accent">${s.containers_running} / ${s.containers_total}</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:8px">${s.containers_stopped} stopped</div>
+            </div>
+        `;
+
+        document.getElementById('systemInfo').innerHTML = `
+            <div class="metric-row">
+                <span class="metric-name">Uptime</span>
+                <span class="metric-value">${formatUptime(s.uptime_seconds)}</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-name">Total Memory</span>
+                <span class="metric-value">${formatBytes(s.memory_total_bytes)}</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-name">Total Disk</span>
+                <span class="metric-value">${formatBytes(s.disk_total_bytes)}</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-name">Running</span>
+                <span class="metric-value" style="color:var(--green)">${s.containers_running}</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-name">Stopped</span>
+                <span class="metric-value" style="color:var(--red)">${s.containers_stopped}</span>
+            </div>
+        `;
+    }
+
+    async function loadContainers() {
+        const res = await apiGet('/containers?all=true');
+        const el = document.getElementById('containersTable');
+        if (!res.success || !res.data || res.data.length === 0) {
+            el.innerHTML = '<div class="empty-state"><p>No containers found</p></div>';
+            return;
+        }
+        el.innerHTML = `
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Image</th>
+                        <th>Status</th>
+                        <th>PID</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${res.data.map(c => `
+                        <tr>
+                            <td><code style="color:var(--accent)">${c.id.substring(0,12)}</code></td>
+                            <td>${c.name}</td>
+                            <td>${c.image}</td>
+                            <td><span class="badge badge-${c.status === 'running' ? 'running' : 'stopped'}">${c.status}</span></td>
+                            <td>${c.pid > 0 ? c.pid : '-'}</td>
+                            <td>
+                                <div class="btn-group">
+                                    ${c.status === 'running'
+                                        ? `<button class="btn btn-sm btn-danger" onclick="stopContainer('${c.id}')">Stop</button>`
+                                        : `<button class="btn btn-sm btn-success" onclick="startContainer('${c.id}')">Start</button>`}
+                                    <button class="btn btn-sm" onclick="removeContainer('${c.id}')">Remove</button>
+                                    <button class="btn btn-sm" onclick="viewLogs('${c.id}')">Logs</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+
+    async function loadImages() {
+        const res = await apiGet('/images');
+        const el = document.getElementById('imagesTable');
+        if (!res.success || !res.data || res.data.length === 0) {
+            el.innerHTML = '<div class="empty-state"><p>No images found. Pull an image to get started.</p></div>';
+            return;
+        }
+        el.innerHTML = `
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Path</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${res.data.map(i => `
+                        <tr>
+                            <td><code style="color:var(--accent)">${i.name}</code></td>
+                            <td style="color:var(--text-muted)">${i.path || '-'}</td>
+                            <td>
+                                <button class="btn btn-sm btn-danger" onclick="removeImage('${i.name}')">Remove</button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+
+    async function loadCompose() {
+        const res = await apiGet('/compose');
+        const el = document.getElementById('composeTable');
+        if (!res.success || !res.data || res.data.length === 0) {
+            el.innerHTML = '<div class="empty-state"><p>No compose stacks deployed</p></div>';
+            return;
+        }
+        el.innerHTML = `
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Status</th>
+                        <th>Services</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${res.data.map(s => `
+                        <tr>
+                            <td><code style="color:var(--accent)">${s.name}</code></td>
+                            <td><span class="badge badge-${s.status === 'running' ? 'running' : 'stopped'}">${s.status}</span></td>
+                            <td>${(s.services || []).length}</td>
+                            <td>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-danger" onclick="removeStack('${s.name}')">Remove</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+
+    async function loadLogs() {
+        const res = await apiGet('/containers?all=true');
+        const select = document.getElementById('logContainerSelect');
+        const current = select.value;
+        select.innerHTML = '<option value="">Select a container...</option>';
+        if (res.success && res.data) {
+            res.data.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name + ' (' + c.id.substring(0,12) + ')';
+                select.appendChild(opt);
+            });
+        }
+        if (current) select.value = current;
+    }
+
+    async function loadContainerLogs(containerId) {
+        if (!containerId) {
+            document.getElementById('logsOutput').textContent = 'Select a container to view logs...';
+            return;
+        }
+        const res = await apiGet('/containers/' + containerId + '/logs');
+        const el = document.getElementById('logsOutput');
+        if (!res.success || !res.data) {
+            el.textContent = 'No logs available';
+            return;
+        }
+        let html = '';
+        if (res.data.stdout) {
+            html += res.data.stdout.split('\n').map(l =>
+                '<div class="logs-line-stdout">' + escapeHtml(l) + '</div>'
+            ).join('');
+        }
+        if (res.data.stderr) {
+            html += res.data.stderr.split('\n').map(l =>
+                '<div class="logs-line-stderr">' + escapeHtml(l) + '</div>'
+            ).join('');
+        }
+        el.innerHTML = html || '<div style="color:var(--text-muted)">No logs available</div>';
+        el.scrollTop = el.scrollHeight;
+    }
+
+    async function loadMetrics() {
+        const res = await fetch(API + '/metrics');
+        const text = await res.text();
+        document.getElementById('metricsOutput').textContent = text;
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    document.getElementById('logContainerSelect').addEventListener('change', function() {
+        loadContainerLogs(this.value);
+    });
+
+    document.getElementById('btnRefreshContainers').addEventListener('click', loadContainers);
+    document.getElementById('btnRefreshImages').addEventListener('click', loadImages);
+    document.getElementById('btnRefreshCompose').addEventListener('click', loadCompose);
+    document.getElementById('btnRefreshLogs').addEventListener('click', () => {
+        const sel = document.getElementById('logContainerSelect').value;
+        if (sel) loadContainerLogs(sel);
+        else loadLogs();
+    });
+    document.getElementById('btnRefreshMetrics').addEventListener('click', loadMetrics);
+
+    async function stopContainer(id) {
+        await apiPost('/containers/' + id + '/stop');
+        addActivity('stop', 'Container ' + id.substring(0,12) + ' stopped');
+        loadContainers();
+        loadDashboard();
+    }
+
+    async function startContainer(id) {
+        await apiPost('/containers/' + id + '/start?detach=true');
+        addActivity('start', 'Container ' + id.substring(0,12) + ' started');
+        loadContainers();
+        loadDashboard();
+    }
+
+    async function removeContainer(id) {
+        if (!confirm('Remove container ' + id.substring(0,12) + '?')) return;
+        await apiDelete('/containers/' + id);
+        addActivity('stop', 'Container ' + id.substring(0,12) + ' removed');
+        loadContainers();
+        loadDashboard();
+    }
+
+    async function removeImage(name) {
+        if (!confirm('Remove image ' + name + '?')) return;
+        await apiDelete('/images/' + name);
+        loadImages();
+    }
+
+    async function removeStack(name) {
+        if (!confirm('Remove stack ' + name + '?')) return;
+        await apiDelete('/compose/' + name);
+        addActivity('stop', 'Stack ' + name + ' removed');
+        loadCompose();
+        loadDashboard();
+    }
+
+    function viewLogs(id) {
+        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+        document.querySelector('[data-page="logs"]').classList.add('active');
+        currentPage = 'logs';
+        document.getElementById('pageTitle').textContent = 'Logs';
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById('page-logs').classList.add('active');
+        loadLogs().then(() => {
+            document.getElementById('logContainerSelect').value = id;
+            loadContainerLogs(id);
+        });
+    }
+
+    function openModal(type) {
+        const overlay = document.getElementById('modalOverlay');
+        const title = document.getElementById('modalTitle');
+        const body = document.getElementById('modalBody');
+        const footer = document.getElementById('modalFooter');
+
+        if (type === 'createContainer') {
+            title.textContent = 'Create Container';
+            body.innerHTML = `
+                <div class="form-group">
+                    <label class="form-label">Name</label>
+                    <input class="form-input" id="inputContainerName" placeholder="my-container">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Image</label>
+                    <input class="form-input" id="inputContainerImage" placeholder="alpine">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Command</label>
+                    <input class="form-input" id="inputContainerCmd" placeholder="/bin/sh" value="/bin/sh">
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label class="form-label">CPU Quota</label>
+                        <input class="form-input" id="inputContainerCPU" type="number" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Memory Limit (bytes)</label>
+                        <input class="form-input" id="inputContainerMem" type="number" value="0">
+                    </div>
+                </div>
+            `;
+            footer.innerHTML = `
+                <button class="btn" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="submitCreateContainer()">Create</button>
+            `;
+        } else if (type === 'pullImage') {
+            title.textContent = 'Pull Image';
+            body.innerHTML = `
+                <div class="form-group">
+                    <label class="form-label">Image Name</label>
+                    <input class="form-input" id="inputImageName" placeholder="alpine">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Download URL</label>
+                    <input class="form-input" id="inputImageURL" placeholder="https://example.com/image.tar.gz">
+                </div>
+            `;
+            footer.innerHTML = `
+                <button class="btn" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="submitPullImage()">Pull</button>
+            `;
+        } else if (type === 'deployStack') {
+            title.textContent = 'Deploy Compose Stack';
+            body.innerHTML = `
+                <div class="form-group">
+                    <label class="form-label">Stack Name</label>
+                    <input class="form-input" id="inputStackName" placeholder="webapp">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Services (JSON array)</label>
+                    <textarea class="form-textarea" id="inputStackServices" placeholder='[{"name":"web","image":"alpine","command":["sh"]}]'>[{"name":"web","image":"alpine","command":["/bin/sh"],"replicas":1}]</textarea>
+                </div>
+            `;
+            footer.innerHTML = `
+                <button class="btn" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="submitDeployStack()">Deploy</button>
+            `;
+        }
+
+        overlay.classList.add('active');
+    }
+
+    function closeModal(e) {
+        if (e && e.target !== document.getElementById('modalOverlay')) return;
+        document.getElementById('modalOverlay').classList.remove('active');
+    }
+
+    async function submitCreateContainer() {
+        const name = document.getElementById('inputContainerName').value;
+        const image = document.getElementById('inputContainerImage').value;
+        const cmd = document.getElementById('inputContainerCmd').value;
+        const cpu = parseInt(document.getElementById('inputContainerCPU').value) || 0;
+        const mem = parseInt(document.getElementById('inputContainerMem').value) || 0;
+
+        if (!image) { alert('Image is required'); return; }
+
+        const res = await apiPost('/containers?detach=true', {
+            name: name || undefined,
+            image: image,
+            command: cmd ? cmd.split(' ') : ['/bin/sh'],
+            cpu_quota: cpu,
+            mem_limit: mem
+        });
+
+        if (res.success) {
+            addActivity('create', 'Container ' + (name || res.data.id.substring(0,12)) + ' created');
+            closeModal();
+            loadContainers();
+            loadDashboard();
+        } else {
+            alert('Error: ' + res.error);
+        }
+    }
+
+    async function submitPullImage() {
+        const name = document.getElementById('inputImageName').value;
+        const url = document.getElementById('inputImageURL').value;
+        if (!name || !url) { alert('Name and URL required'); return; }
+
+        const res = await apiPost('/images/pull', { name, url });
+        if (res.success) {
+            addActivity('create', 'Image ' + name + ' pulled');
+            closeModal();
+            loadImages();
+        } else {
+            alert('Error: ' + res.error);
+        }
+    }
+
+    async function submitDeployStack() {
+        const name = document.getElementById('inputStackName').value;
+        const servicesStr = document.getElementById('inputStackServices').value;
+        if (!name) { alert('Stack name required'); return; }
+
+        let services;
+        try {
+            services = JSON.parse(servicesStr);
+        } catch (e) {
+            alert('Invalid JSON: ' + e.message);
+            return;
+        }
+
+        const res = await apiPost('/compose', { name, services });
+        if (res.success) {
+            addActivity('create', 'Stack ' + name + ' deployed');
+            closeModal();
+            loadCompose();
+            loadDashboard();
+        } else {
+            alert('Error: ' + res.error);
+        }
+    }
+
+    function loadPage(page) {
+        switch (page) {
+            case 'dashboard': loadDashboard(); break;
+            case 'containers': loadContainers(); break;
+            case 'images': loadImages(); break;
+            case 'compose': loadCompose(); break;
+            case 'logs': loadLogs(); break;
+            case 'metrics': loadMetrics(); break;
+        }
+    }
+
+    function startAutoRefresh() {
+        if (refreshInterval) clearInterval(refreshInterval);
+        refreshInterval = setInterval(() => {
+            loadPage(currentPage);
+        }, 5000);
+    }
+
+    loadDashboard();
+    startAutoRefresh();
+    </script>
+</body>
+</html>

@@ -1,188 +1,217 @@
 # NanoContainer
 
-Lightweight Linux container runtime written in Go. A minimal Docker/runc alternative that implements core container primitives directly using Linux syscalls.
+**Lightweight Linux Container Runtime with Web Dashboard**
+
+A production-grade container runtime written in Go — implementing the core primitives of Docker/runc from scratch using Linux syscalls. Features a full REST API, real-time web dashboard, compose orchestration, image building, and volume management.
+
+![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go&logoColor=white)
+![Linux](https://img.shields.io/badge/Linux-Kernel_5.4+-FCC624?style=flat&logo=linux&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-blue.svg)
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      CLI Layer                          │
-│  nanocontainer run | ps | stop | logs | pull | images   │
-├─────────────────────────────────────────────────────────┤
-│                   Container Manager                     │
-│  Create → Start → Attach → Stop → Cleanup               │
-├──────────┬──────────┬──────────┬──────────┬─────────────┤
-│Namespace │ Cgroups  │ Rootfs   │ Network  │  State      │
-│ (clone)  │ (v2)     │ (pivot)  │ (veth)   │  (JSON)     │
-│          │          │          │          │             │
-│ PID      │ CPU      │ tar.gz   │ Bridge   │ containers/ │
-│ Mount    │ Memory   │ devnodes │ NAT      │ images/     │
-│ UTS      │ PIDs     │ procfs   │ IP alloc │ network/    │
-│ Net      │          │ resolv   │          │             │
-└──────────┴──────────┴──────────┴──────────┴─────────────┘
-         │                │                │
-    Linux Kernel    Linux Kernel     Linux Kernel
-  (clone syscall)  (cgroup fs)     (netlink/ioctl)
+┌─────────────────────────────────────────────────────────────────┐
+│                    NanoContainer Platform                       │
+├──────────┬──────────┬──────────┬──────────┬─────────────────────┤
+│   CLI    │ REST API │ Dashboard│ Compose  │    Image Builder    │
+│ (16 cmds)│(16 endpoints)│(Web UI)│(YAML/JSON)│  (Dockerfile)  │
+├──────────┴──────────┴──────────┴──────────┴─────────────────────┤
+│                      Core Engine                                │
+├──────────┬──────────┬──────────┬──────────┬─────────────────────┤
+│Namespace │ Cgroups  │ Rootfs   │ Network  │    State Store      │
+│ isolation│   v2     │ pivot_root│  veth   │    (JSON)           │
+│ PID/Mount│ CPU/Mem/ │ tar.gz   │ bridge  │  Atomic writes      │
+│ UTS/Net  │ PIDs     │ /dev     │ NAT     │  Container state    │
+├──────────┴──────────┴──────────┴──────────┴─────────────────────┤
+│                    Storage Layer                                 │
+├──────────┬──────────┬──────────┬──────────┬─────────────────────┤
+│Containers│  Images  │ Volumes  │  Logs    │    Metrics          │
+│ /var/lib │ .tar.gz  │ named    │ stdout   │  /proc + cgroup    │
+│ /nanocont│ registry │ mounts   │ stderr   │  Prometheus         │
+└──────────┴──────────┴──────────┴──────────┴─────────────────────┘
 ```
 
 ## Features
 
-- **Namespace Isolation**: PID, Mount, UTS, Network namespaces via `clone()` syscall
-- **Resource Limits**: CPU quota, memory limits, PID limits via cgroup v2
-- **Rootfs Management**: Image extraction, pivot_root, minimal /dev nodes
-- **Network**: Virtual ethernet pairs, bridge networking, NAT
-- **State Management**: Atomic JSON state files, container lifecycle tracking
-- **CLI**: Full command-line interface with run, ps, stop, logs, pull, images
+### Core
+- **Namespace Isolation** — PID, Mount, UTS, Network via `clone()` syscall
+- **cgroup v2** — CPU quota, memory limits, PID limits
+- **Rootfs** — Image extraction, pivot_root, minimal /dev nodes
+- **Network** — Virtual ethernet pairs, bridge networking, NAT, port forwarding
+- **State** — Atomic JSON persistence, container lifecycle tracking
 
-## Prerequisites
+### Platform
+- **REST API** — 16 endpoints for programmatic container management
+- **Web Dashboard** — Real-time dark-themed UI with auto-refresh
+- **Compose** — Multi-container orchestration with dependency resolution
+- **Image Builder** — Build images from Dockerfiles
+- **Volumes** — Named persistent storage
+- **Port Forwarding** — iptables DNAT-based port mapping
+- **Prometheus Metrics** — System and container metrics endpoint
 
-- Linux kernel 5.4+ (cgroup v2)
-- Root privileges (required for namespaces/cgroups)
-- Go 1.22+
+### CLI
+```bash
+nanocontainer run <image> <cmd>       # Run container
+nanocontainer ps [-a]                 # List containers
+nanocontainer stop <id>               # Stop container
+nanocontainer logs <id>               # View logs
+nanocontainer serve --addr :8080      # Start API + Dashboard
+nanocontainer compose up              # Deploy stack
+nanocontainer build --file Dockerfile # Build image
+nanocontainer volume create <name>    # Create volume
+nanocontainer port add <host>:<cont>  # Forward port
+```
 
-## Build
+## Quick Start
+
+### Build
 
 ```bash
-# Clone the repository
 git clone https://github.com/cokovali10-sketch/NanoContainer.git
 cd NanoContainer
-
-# Build
-go build -o nanocontainer ./cmd/nanocontainer
-
-# Or install
-go install ./cmd/nanocontainer
+GOOS=linux GOARCH=amd64 go build -o nanocontainer ./cmd/nanocontainer
 ```
 
-## Usage
-
-### Pull an image
+### Prepare Image
 
 ```bash
-# Create a minimal rootfs tarball (Alpine Linux)
-# Option 1: From Docker
-docker export $(docker create alpine:latest) | gzip > images/alpine.tar.gz
-
-# Option 2: Manual creation
-mkdir rootfs && sudo debootstrap --variant=minbase bullseye rootfs
-tar -czf images/alpine.tar.gz -C rootfs .
-
-# Place in NanoContainer's image directory
+# Create image directory
 mkdir -p /var/lib/nanocontainer/images
-cp alpine.tar.gz /var/lib/nanocontainer/images/
+
+# Download Alpine Linux rootfs
+wget -O /var/lib/nanocontainer/images/alpine.tar.gz \
+  https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86_64/alpine-minirootfs-3.19.1-x86_64.tar.gz
+
+# Or create from Docker
+docker export $(docker create alpine:latest) | gzip > /var/lib/nanocontainer/images/alpine.tar.gz
 ```
 
-### Run a container
+### Run
 
 ```bash
-# Interactive shell (foreground)
+# Interactive shell
 sudo ./nanocontainer run alpine /bin/sh
 
-# Detached with resource limits
+# Detached with limits
 sudo ./nanocontainer run --name web --cpu 50000 --memory 268435456 -d alpine /bin/sh
 
-# Run a specific command
-sudo ./nanocontainer run alpine echo "Hello from container"
+# Start dashboard
+sudo ./nanocontainer serve --addr :8080
+# Open http://localhost:8080
 ```
 
-### Manage containers
+### Compose
+
+```yaml
+# nanocontainer-compose.yml
+name: webapp
+services:
+  nginx:
+    image: alpine
+    command: ["nginx", "-g", "daemon off;"]
+    ports:
+      - host: 8080
+        container: 80
+    depends_on:
+      - api
+  api:
+    image: alpine
+    command: ["python3", "-m", "http.server", "5000"]
+    ports:
+      - host: 5000
+        container: 5000
+    volumes:
+      - source: app-data
+        target: /data
+    replicas: 2
+```
 
 ```bash
-# List running containers
-sudo ./nanocontainer ps
-
-# List all containers (including stopped)
-sudo ./nanocontainer ps -a
-
-# Show container logs
-sudo ./nanocontainer logs <container-id>
-
-# Stop a container
-sudo ./nanocontainer stop <container-id>
+sudo ./nanocontainer compose up webapp
+sudo ./nanocontainer compose ls
+sudo ./nanocontainer compose down webapp
 ```
 
-### Image management
+## REST API
 
-```bash
-# List available images
-sudo ./nanocontainer images
-
-# Pull image from URL
-sudo ./nanocontainer pull alpine https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86_64/alpine-minirootfs-3.19.1-x86_64.tar.gz
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/health` | Health check |
+| GET | `/api/containers` | List containers |
+| POST | `/api/containers` | Create container |
+| GET | `/api/containers/:id` | Get details |
+| POST | `/api/containers/:id/stop` | Stop |
+| POST | `/api/containers/:id/start` | Start |
+| DELETE | `/api/containers/:id` | Remove |
+| GET | `/api/containers/:id/logs` | Get logs |
+| GET | `/api/images` | List images |
+| POST | `/api/images/pull` | Pull image |
+| POST | `/api/images/build` | Build image |
+| GET | `/api/stats` | System stats |
+| GET | `/api/metrics` | Prometheus metrics |
+| GET | `/api/compose` | List stacks |
+| POST | `/api/compose` | Deploy stack |
+| DELETE | `/api/compose/:name` | Remove stack |
 
 ## Project Structure
 
 ```
 NanoContainer/
 ├── cmd/nanocontainer/
-│   └── main.go              # CLI entry point
+│   └── main.go              # CLI entry point (16 commands)
 ├── internal/
+│   ├── api/
+│   │   ├── server.go        # REST API server (16 endpoints)
+│   │   ├── middleware.go    # CORS, logging, recovery, rate limit
+│   │   ├── stats.go         # System stats + Prometheus metrics
+│   │   ├── dashboard.go     # Web dashboard server
+│   │   └── dashboard.html   # Full dark-themed Web UI
+│   ├── cli/
+│   │   ├── colors.go        # ANSI color helpers
+│   │   └── progress.go      # Progress bar
+│   ├── compose/
+│   │   └── compose.go       # Multi-container orchestration
 │   ├── config/
 │   │   └── config.go        # Configuration management
 │   ├── container/
 │   │   ├── container.go     # Container lifecycle
-│   │   └── init.go          # Namespace init process
+│   │   └── init.go          # Namespace init process (PID 1)
 │   ├── cgroup/
 │   │   └── cgroup.go        # cgroup v2 management
+│   ├── image/
+│   │   └── builder.go       # Dockerfile parser + image builder
 │   ├── namespace/
 │   │   └── namespace.go     # Linux namespace operations
+│   ├── network/
+│   │   ├── network.go       # Bridge + veth networking
+│   │   └── portforward.go   # Port forwarding via iptables
 │   ├── rootfs/
 │   │   └── rootfs.go        # Rootfs/image management
-│   ├── network/
-│   │   └── network.go       # Network namespace + veth
-│   └── store/
-│       └── store.go         # State persistence
+│   ├── store/
+│   │   └── store.go         # State persistence
+│   └── volume/
+│       └── volume.go        # Named volume management
+├── nanocontainer-compose.yml
+├── Dockerfile.example
 ├── go.mod
 ├── go.sum
 └── README.md
 ```
 
-## How It Works
+## Requirements
 
-### Container Creation Flow
+- Linux kernel 5.4+ (cgroup v2)
+- Root privileges
+- Go 1.22+
 
-1. **Image Check**: Verify image exists in `/var/lib/nanocontainer/images/`
-2. **Rootfs Extract**: Unpack `.tar.gz` to `/var/lib/nanocontainer/containers/<id>/rootfs/`
-3. **Base Setup**: Create `/proc`, `/sys`, `/dev`, `/tmp` directories
-4. **Dev Nodes**: Create `/dev/null`, `/dev/zero`, `/dev/random`, `/dev/tty`
-5. **Network**: Create veth pair, attach to bridge, configure IP
-6. **Clone**: Fork process with `CLONE_NEWPID|CLONE_NEWNS|CLONE_NEWUTS|CLONE_NEWNET`
-7. **Init (PID 1)**: Mount /proc, /sys, /dev; pivot_root; exec user command
-8. **Cgroup**: Add PID to cgroup with CPU/memory limits
+## Security
 
-### Namespace Isolation
-
-| Namespace | Isolation | Syscall Flag |
-|-----------|-----------|--------------|
-| PID | Process ID tree | `CLONE_NEWPID` |
-| Mount | Filesystem tree | `CLONE_NEWNS` |
-| UTS | Hostname/domainname | `CLONE_NEWUTS` |
-| Network | Network stack | `CLONE_NEWNET` |
-
-### Cgroup v2 Limits
-
-| Resource | File | Format |
-|----------|------|--------|
-| CPU | `cpu.max` | `<quota> <period>` |
-| Memory | `memory.max` | `<bytes>` |
-| PIDs | `pids.max` | `<count>` |
-
-## Limitations
-
-- **Linux only**: Uses Linux-specific syscalls (clone, pivot_root, cgroups)
-- **Root required**: Namespaces and cgroups require root privileges
-- **No image registry**: Manual image management (tar.gz files)
-- **No overlayfs**: Uses plain directory extraction
-- **No seccomp**: No syscall filtering (can be added)
-
-## Security Considerations
-
-- Containers run with root privileges by default
-- No AppArmor/SELinux profiles
-- No seccomp filters
-- No user namespace remapping (can be added)
-- Network bridge is accessible to all containers
+- Containers run in isolated namespaces
+- cgroup resource limits prevent resource exhaustion
+- Rate limiting on API endpoints
+- Input validation on all API parameters
+- Atomic state writes prevent corruption
 
 ## License
 

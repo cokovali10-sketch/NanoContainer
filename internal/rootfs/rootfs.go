@@ -239,6 +239,124 @@ func (m *Manager) SetupHostnameFile(rootfs string, hostname string) error {
 	return os.WriteFile(filepath.Join(rootfs, "etc/hostname"), []byte(hostname+"\n"), 0644)
 }
 
+func (m *Manager) BuildImage(contextPath, dockerfile, tag string) error {
+	dockerfilePath := filepath.Join(contextPath, dockerfile)
+	if _, err := os.Stat(dockerfilePath); os.IsNotExist(err) {
+		return fmt.Errorf("Dockerfile not found at %s", dockerfilePath)
+	}
+
+	data, err := os.ReadFile(dockerfilePath)
+	if err != nil {
+		return fmt.Errorf("read Dockerfile: %w", err)
+	}
+
+	lines := strings.Split(string(data), "\n")
+	var baseImage string
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "#") || line == "" {
+			continue
+		}
+
+		if strings.HasPrefix(strings.ToUpper(line), "FROM ") {
+			parts := strings.Fields(line)
+			if len(parts) >= 2 {
+				baseImage = parts[1]
+			}
+			break
+		}
+	}
+
+	if baseImage == "" {
+		return fmt.Errorf("no FROM instruction found in Dockerfile")
+	}
+
+	fmt.Printf("Building from base image: %s\n", baseImage)
+
+	tarPath := filepath.Join(m.ImageDir, tag+".tar.gz")
+
+	buildDir := filepath.Join(m.ContainerDir, "builds", tag)
+	os.MkdirAll(buildDir, 0755)
+	defer os.RemoveAll(buildDir)
+
+	if err := m.UnpackImage(baseImage, buildDir); err != nil {
+		return fmt.Errorf("unpack base image: %w", err)
+	}
+
+	copyFiles := func(src, dst string) error {
+		return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			relPath, _ := filepath.Rel(src, path)
+			destPath := filepath.Join(dst, relPath)
+
+			if info.IsDir() {
+				return os.MkdirAll(destPath, 0755)
+			}
+
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			return os.WriteFile(destPath, data, info.Mode())
+		})
+	}
+
+	if err := copyFiles(contextPath, buildDir); err != nil {
+		return fmt.Errorf("copy context: %w", err)
+	}
+
+	os.MkdirAll(m.ImageDir, 0755)
+
+	f, err := os.Create(tarPath)
+	if err != nil {
+		return fmt.Errorf("create tarball: %w", err)
+	}
+	defer f.Close()
+
+	gz := gzip.NewWriter(f)
+	defer gz.Close()
+
+	tw := tar.NewWriter(gz)
+	defer tw.Close()
+
+	return filepath.Walk(buildDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		relPath, _ := filepath.Rel(buildDir, path)
+		if relPath == "" {
+			return nil
+		}
+
+		header, err := tar.FileInfoHeader(info, "")
+		if err != nil {
+			return err
+		}
+		header.Name = relPath
+
+		if err := tw.WriteHeader(header); err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		_, err = io.Copy(tw, file)
+		return err
+	})
+}
+
 func (m *Manager) HasBusybox(rootfs string) bool {
 	_, err := os.Stat(filepath.Join(rootfs, "bin/sh"))
 	return err == nil

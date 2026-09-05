@@ -1,0 +1,22 @@
+name: webapp
+services:
+  nginx:
+    image: alpine
+    command: ["nginx", "-g", "daemon off;"]
+    ports:
+      - host: 8080
+        container: 80
+    depends_on:
+      - api
+  api:
+    image: alpine
+    command: ["python3", "-m", "http.server", "5000"]
+    ports:
+      - host: 5000
+        container: 5000
+    volumes:
+      - source: app-data
+        target: /data
+    environment:
+      NODE_ENV: production
+    replicas: 2
