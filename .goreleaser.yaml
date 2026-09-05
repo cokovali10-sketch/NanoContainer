@@ -1,0 +1,63 @@
+project_name: nanocontainer
+
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+
+builds:
+  - main: ./cmd/nanocontainer
+    binary: nanocontainer
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+      - arm
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.buildTime={{.Date}}
+
+archives:
+  - format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    format_overrides:
+      - goos: windows
+        format: zip
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:'
+      - '^chore:'
+
+release:
+  github:
+    owner: cokovali10-sketch
+    name: NanoContainer
+  draft: false
+  prerelease: auto
+  name_template: "v{{.Version}}"
+  header: |
+    ## NanoContainer v{{.Version}}
+
+    Lightweight Linux Container Runtime — from scratch.
+  footer: |
+    **Full Changelog**: https://github.com/cokovali10-sketch/NanoContainer/compare/{{.PreviousTag}}...{{.Version}}
+  extra_files:
+    - glob: nanocontainer-compose.yml
+    - glob: Dockerfile.example

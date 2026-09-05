@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NanoContainer - Lightweight Linux Container Runtime</title>
+    <meta name="description" content="A production-grade container runtime written in Go. Namespaces, cgroups, OverlayFS, seccomp, and more. 9300+ lines of pure Linux syscalls.">
+    <meta name="keywords" content="container, runtime, linux, golang, docker, runc, namespaces, cgroups, seccomp, overlayfs">
+    <meta property="og:title" content="NanoContainer - Lightweight Linux Container Runtime">
+    <meta property="og:description" content="A production-grade container runtime written in Go. From scratch.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://cokovali10-sketch.github.io/NanoContainer/">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: #0a0a0f; color: #e2e8f0; line-height: 1.6; }
+        .hero { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2rem; background: radial-gradient(ellipse at top, rgba(34,211,238,0.1) 0%, transparent 50%); }
+        .hero h1 { font-size: 4rem; font-weight: 800; margin-bottom: 1rem; background: linear-gradient(135deg, #22d3ee, #3b82f6, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero p { font-size: 1.25rem; color: #94a3b8; max-width: 600px; margin-bottom: 2rem; }
+        .hero .badges { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; margin-bottom: 2rem; }
+        .hero .badges img { height: 28px; }
+        .hero .cta { display: flex; gap: 1rem; }
+        .btn { padding: 12px 24px; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: all 0.2s; }
+        .btn-primary { background: #22d3ee; color: #000; }
+        .btn-primary:hover { background: #06b6d4; transform: translateY(-2px); }
+        .btn-secondary { background: rgba(255,255,255,0.05); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.1); }
+        .btn-secondary:hover { background: rgba(255,255,255,0.1); }
+        .section { padding: 5rem 2rem; max-width: 1200px; margin: 0 auto; }
+        .section h2 { font-size: 2.5rem; font-weight: 700; text-align: center; margin-bottom: 3rem; }
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; }
+        .feature { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 2rem; }
+        .feature h3 { font-size: 1.25rem; margin-bottom: 0.75rem; color: #22d3ee; }
+        .feature p { color: #94a3b8; font-size: 0.9rem; }
+        .feature .icon { font-size: 2rem; margin-bottom: 1rem; }
+        .comparison { overflow-x: auto; }
+        .comparison table { width: 100%; border-collapse: collapse; margin: 2rem 0; }
+        .comparison th, .comparison td { padding: 1rem; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .comparison th { background: rgba(255,255,255,0.02); color: #22d3ee; }
+        .code-block { background: #0f0f14; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 1.5rem; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; overflow-x: auto; margin: 1rem 0; }
+        .code-block .comment { color: #475569; }
+        .code-block .command { color: #22d3ee; }
+        .code-block .output { color: #94a3b8; }
+        .terminal { background: #0f0f14; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; overflow: hidden; margin: 2rem 0; }
+        .terminal-header { background: rgba(255,255,255,0.03); padding: 0.75rem 1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .terminal-dot { width: 12px; height: 12px; border-radius: 50%; }
+        .terminal-dot.red { background: #ef4444; }
+        .terminal-dot.yellow { background: #eab308; }
+        .terminal-dot.green { background: #22c55e; }
+        .terminal-body { padding: 1.5rem; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; line-height: 1.8; }
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem; text-align: center; margin: 3rem 0; }
+        .stat .number { font-size: 3rem; font-weight: 800; color: #22d3ee; }
+        .stat .label { color: #94a3b8; font-size: 0.9rem; }
+        footer { text-align: center; padding: 3rem; color: #475569; border-top: 1px solid rgba(255,255,255,0.06); }
+        footer a { color: #22d3ee; text-decoration: none; }
+        @media (max-width: 768px) { .hero h1 { font-size: 2.5rem; } .stats { grid-template-columns: repeat(2, 1fr); } }
+    </style>
+</head>
+<body>
+    <section class="hero">
+        <div class="badges">
+            <img src="https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go" alt="Go">
+            <img src="https://img.shields.io/badge/Linux-Kernel_5.4+-FCC624?style=flat&logo=linux" alt="Linux">
+            <img src="https://img.shields.io/badge/License-MIT-blue?style=flat" alt="MIT">
+            <img src="https://img.shields.io/badge/Code-9300%2B%20lines-brightgreen?style=flat" alt="Lines">
+        </div>
+        <h1>NanoContainer</h1>
+        <p>Lightweight Linux Container Runtime — written from scratch using pure Linux syscalls. No Docker. No runc. Just Go + Kernel.</p>
+        <div class="cta">
+            <a href="https://github.com/cokovali10-sketch/NanoContainer" class="btn btn-primary">View on GitHub</a>
+            <a href="#quickstart" class="btn btn-secondary">Quick Start</a>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2>Stats</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">9,333</div><div class="label">Lines of Go</div></div>
+            <div class="stat"><div class="number">41</div><div class="label">Go Modules</div></div>
+            <div class="stat"><div class="number">23</div><div class="label">API Endpoints</div></div>
+            <div class="stat"><div class="number">14MB</div><div class="label">Binary Size</div></div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2>Features</h2>
+        <div class="features">
+            <div class="feature">
+                <div class="icon">🐧</div>
+                <h3>Pure Linux</h3>
+                <p>Direct syscall usage — clone(), pivot_root(), mount(), seccomp(). No container libraries.</p>
+            </div>
+            <div class="feature">
+                <div class="icon">🔒</div>
+                <h3>Security</h3>
+                <p>Seccomp BPF filters, Linux capabilities, read-only rootfs, no-new-privileges, encrypted secrets.</p>
+            </div>
+            <div class="feature">
+                <div class="icon">🌐</div>
+                <h3>Networking</h3>
+                <p>Bridge networking, veth pairs, NAT, DNS service discovery, port forwarding.</p>
+            </div>
+            <div class="feature">
+                <div class="icon">📦</div>
+                <h3>Compose</h3>
+                <p>Multi-container orchestration from YAML/JSON. Dependency resolution, rolling updates.</p>
+            </div>
+            <div class="feature">
+                <div class="icon">🖥️</div>
+                <h3>Web Dashboard</h3>
+                <p>Real-time dark-themed UI. Monitor containers, view logs, manage services.</p>
+            </div>
+            <div class="feature">
+                <div class="icon">🔄</div>
+                <h3>Orchestration</h3>
+                <p>Service replication, load balancing, health checks, restart policies.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section" id="quickstart">
+        <h2>Quick Start</h2>
+        <div class="terminal">
+            <div class="terminal-header">
+                <div class="terminal-dot red"></div>
+                <div class="terminal-dot yellow"></div>
+                <div class="terminal-dot green"></div>
+            </div>
+            <div class="terminal-body">
+                <div><span class="comment"># One-line install</span></div>
+                <div><span class="command">curl -fsSL https://raw.githubusercontent.com/cokovali10-sketch/NanoContainer/master/scripts/install.sh | bash</span></div>
+                <br>
+                <div><span class="comment"># Or build from source</span></div>
+                <div><span class="command">git clone https://github.com/cokovali10-sketch/NanoContainer.git</span></div>
+                <div><span class="command">cd NanoContainer && make build</span></div>
+                <br>
+                <div><span class="comment"># Run your first container</span></div>
+                <div><span class="command">sudo ./nanocontainer run alpine /bin/sh</span></div>
+                <div><span class="output">/ # echo "Hello from NanoContainer!"</span></div>
+                <div><span class="output">Hello from NanoContainer!</span></div>
+                <br>
+                <div><span class="comment"># Start the web dashboard</span></div>
+                <div><span class="command">sudo ./nanocontainer serve --addr :8080</span></div>
+                <div><span class="output">NanoContainer v3.0.0 running on http://localhost:8080</span></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2>Comparison</h2>
+        <div class="comparison">
+            <table>
+                <tr><th>Feature</th><th>NanoContainer</th><th>Docker</th><th>Podman</th><th>runc</th></tr>
+                <tr><td>Lines of Code</td><td><strong>9K</strong></td><td>500K</td><td>400K</td><td>15K</td></tr>
+                <tr><td>Binary Size</td><td><strong>14MB</strong></td><td>50+MB</td><td>40+MB</td><td>10MB</td></tr>
+                <tr><td>Web Dashboard</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td></tr>
+                <tr><td>REST API</td><td>✅</td><td>⚠️</td><td>✅</td><td>❌</td></tr>
+                <tr><td>Compose</td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
+                <tr><td>Seccomp</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+                <tr><td>Health Checks</td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
+                <tr><td>JWT Auth</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td></tr>
+            </table>
+        </div>
+    </section>
+
+    <footer>
+        <p>Built with ❤️ and Linux syscalls</p>
+        <p style="margin-top: 1rem;"><a href="https://github.com/cokovali10-sketch/NanoContainer">GitHub</a> · <a href="https://github.com/cokovali10-sketch/NanoContainer#readme">Documentation</a> · <a href="https://github.com/cokovali10-sketch/NanoContainer/blob/master/CONTRIBUTING.md">Contributing</a></p>
+    </footer>
+</body>
+</html>
