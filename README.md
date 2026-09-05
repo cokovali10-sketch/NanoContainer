@@ -2,8 +2,9 @@
   <img src="https://img.shields.io/badge/Platform-Linux_5.4+-FCC624?style=for-the-badge&logo=linux&logoColor=white" alt="Linux"/>
   <img src="https://img.shields.io/badge/Go-1.22+-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go"/>
   <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="MIT"/>
-  <img src="https://img.shields.io/badge/Code-9300%2B%20lines-brightgreen?style=for-the-badge" alt="Lines"/>
-  <img src="https://img.shields.io/badge/Modules-41-blueviolet?style=for-the-badge" alt="Modules"/>
+  <img src="https://img.shields.io/badge/Code-12000%2B%20lines-brightgreen?style=for-the-badge" alt="Lines"/>
+  <img src="https://img.shields.io/badge/Modules-55-blueviolet?style=for-the-badge" alt="Modules"/>
+  <img src="https://img.shields.io/badge/Features-20+-ff6b6b?style=for-the-badge" alt="Features"/>
 </p>
 
 <h1 align="center">NanoContainer</h1>
@@ -15,10 +16,10 @@
 
 <p align="center">
   <a href="#-quick-start">Quick Start</a> •
-  <a href="#-features">Features</a> •
+  <a href="#-killer-features">Killer Features</a> •
+  <a href="#-features">All Features</a> •
   <a href="#-architecture">Architecture</a> •
   <a href="#-api-reference">API</a> •
-  <a href="#-screenshots">Screenshots</a> •
   <a href="#-contributing">Contributing</a>
 </p>
 
@@ -26,7 +27,7 @@
 
 ## Why NanoContainer?
 
-> **"I wanted to understand how Docker works under the hood, so I wrote my own container runtime in 9,000 lines of Go."**
+> **"I wanted to understand how Docker works under the hood, so I wrote my own container runtime in 12,000 lines of Go."**
 
 NanoContainer implements the **core primitives** of container isolation directly using Linux syscalls:
 
@@ -43,43 +44,183 @@ NanoContainer implements the **core primitives** of container isolation directly
 
 ---
 
-## Features
+## Killer Features (No Docker/Podman Equivalent)
 
-### Core Engine
-- **Namespace Isolation** — PID, Mount, UTS, Network via `clone()` syscall
-- **cgroup v2** — CPU quota, memory limits, PID limits
-- **OverlayFS** — Copy-on-Write layered filesystem
-- **Pivot Root** — Complete root filesystem replacement
-- **Bridge Networking** — veth pairs, NAT, port forwarding
+### 🖥️ WebTerminal — Browser Terminal in Containers
+Access your containers directly from the browser. No SSH needed.
 
-### Security
-- **Seccomp BPF** — Block 50+ dangerous syscalls
-- **Linux Capabilities** — Fine-grained privilege control
-- **Read-Only Rootfs** — Immutable container filesystems
-- **No New Privileges** — Prevent setuid escalation
-- **Encrypted Secrets** — AES-256-GCM encrypted storage
+```bash
+# Open terminal for container
+nanocontainer terminal web-nginx
 
-### Orchestration
-- **Compose** — Multi-container stacks from YAML/JSON
-- **Services** — Replicated services with rolling updates
-- **Load Balancing** — Random healthy replica selection
-- **Health Checks** — HTTP, TCP, and command probes
-- **Restart Policies** — always, on-failure, unless-stopped
+# Or via API
+curl http://localhost:8080/api/containers/web-nginx/terminal
+```
 
-### Developer Experience
-- **Exec** — Enter running containers (`nsenter`)
-- **Copy** — Transfer files to/from containers
-- **Inspect** — Full container details (like `docker inspect`)
-- **Stats** — Real-time CPU/memory/network metrics
-- **Logs** — Container stdout/stderr streaming
+Features:
+- xterm.js dark theme
+- Real-time resize
+- Copy/paste support
+- Auto-reconnection
 
-### Platform
-- **REST API** — 23 endpoints with authentication
-- **Web Dashboard** — Real-time dark-themed UI
-- **WebSocket** — Live event streaming
-- **Registry** — Local image storage (push/pull/tag)
-- **DNS** — Service discovery between containers
-- **Prometheus Metrics** — Monitoring integration
+### 🔍 Vulnerability Scanner — Built-in CVE Detection
+Scan container images for known vulnerabilities.
+
+```bash
+# Scan an image
+nanocontainer scan alpine
+
+# Scan a running container
+nanocontainer scan --container web-nginx
+
+# Update CVE database
+nanocontainer scan --update
+```
+
+Output:
+```
+┌─────────────────────────────────────────────────────────┐
+│  Vulnerability Report: alpine:3.19                      │
+├─────────────────────────────────────────────────────────┤
+│  Total Packages: 42                                     │
+│  Critical: 0  High: 2  Medium: 5  Low: 12             │
+├─────────────────────────────────────────────────────────┤
+│  HIGH   CVE-2024-1234  openssl 3.1.4 → 3.1.5          │
+│  HIGH   CVE-2024-5678  curl 8.4.0 → 8.5.0             │
+│  MEDIUM CVE-2024-9012  zlib 1.3.0 → 1.3.1             │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 📦 Container Templates — One-Command Deploy
+15 built-in templates for instant deployment.
+
+```bash
+# Deploy nginx
+nanocontainer template deploy nginx
+
+# Deploy with custom name
+nanocontainer template deploy redis --name my-cache
+
+# List all templates
+nanocontainer template list
+```
+
+Available: nginx, node, python, redis, postgres, mysql, mongo, golang, rust, java, php, apache, mongo-express, adminer, portainer
+
+### 💰 Cost Calculator — Cloud Cost Estimation
+Compare costs across AWS/GCP/Azure.
+
+```bash
+# Estimate cost for a container
+nanocontainer cost --cpu 2 --memory 4GB --provider aws
+
+# Compare all providers
+nanocontainer cost compare --cpu 2 --memory 4GB
+
+# Full report
+nanocontainer cost report
+```
+
+Output:
+```
+┌─────────────────────────────────────────────────────────┐
+│  Cost Comparison: 2 vCPU, 4GB RAM                       │
+├─────────────────────────────────────────────────────────┤
+│  AWS:   $0.113/hour  $2.71/day  $81.30/month          │
+│  GCP:   $0.101/hour  $2.42/day  $72.60/month          │
+│  Azure: $0.110/hour  $2.64/day  $79.20/month          │
+├─────────────────────────────────────────────────────────┤
+│  Cheapest: GCP (save $8.70/month vs AWS)               │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 🤖 AI Optimizer — Smart Resource Tuning
+Analyze usage patterns and get optimization recommendations.
+
+```bash
+# Analyze a container
+nanocontainer optimize web-nginx
+
+# Analyze all containers
+nanocontainer optimize --all
+
+# Get predictions
+nanocontainer optimize predict --days 7
+```
+
+Output:
+```
+┌─────────────────────────────────────────────────────────┐
+│  Optimization Report: web-nginx                         │
+├─────────────────────────────────────────────────────────┤
+│  Current:  CPU 50000  Memory 256MB                      │
+│  Optimal:  CPU 25000  Memory 128MB                      │
+│  Savings:  50% CPU, 50% Memory                         │
+│  Confidence: 87%                                        │
+│  Reason: P95 CPU usage is 23%, memory peaks at 98MB    │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 💾 Backup/Restore — One-Click Container Backup
+Full container backup with state, filesystem, and logs.
+
+```bash
+# Create backup
+nanocontainer backup create web-nginx
+
+# List backups
+nanocontainer backup list
+
+# Restore backup
+nanocontainer backup restore <backup-id>
+
+# Export to file
+nanocontainer backup export <backup-id> ./backup.tar.gz
+
+# Import from file
+nanocontainer backup import ./backup.tar.gz
+```
+
+### ☸️ Kubernetes Export — K8s Manifests
+Export containers as Kubernetes manifests.
+
+```bash
+# Export container as K8s Deployment
+nanocontainer k8s export web-nginx
+
+# Export compose to K8s
+nanocontainer k8s export-compose myapp.yml
+
+# Export all containers
+nanocontainer k8s export-all
+```
+
+Output:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-nginx
+  labels:
+    app: web-nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-nginx
+  template:
+    metadata:
+      labels:
+        app: web-nginx
+    spec:
+      containers:
+      - name: web-nginx
+        image: alpine:3.19
+        resources:
+          limits:
+            cpu: "0.5"
+            memory: "256Mi"
+```
 
 ---
 
