@@ -1,0 +1,1391 @@
+openapi: 3.0.3
+info:
+  title: NanoContainer API
+  description: REST and WebSocket API for NanoContainer — a lightweight Linux container runtime.
+  version: 1.0.0
+  contact:
+    name: NanoContainer
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Containers
+    description: Container lifecycle management
+  - name: Images
+    description: Image management
+  - name: Stats
+    description: Host and container statistics
+  - name: Compose
+    description: Multi-container compose stacks
+  - name: Volumes
+    description: Persistent volume management
+  - name: Secrets
+    description: Secret management
+  - name: Networks
+    description: Network management
+  - name: Services
+    description: Service orchestration and scaling
+  - name: Events
+    description: Real-time event streaming
+
+paths:
+  /api/health:
+    get:
+      tags: [Health]
+      summary: Health check
+      operationId: getHealth
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: ok
+                version: "1.0.0"
+                uptime: "2h30m15s"
+
+  /api/containers:
+    get:
+      tags: [Containers]
+      summary: List all containers
+      operationId: listContainers
+      parameters:
+        - name: all
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Include stopped containers
+      responses:
+        '200':
+          description: List of containers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Container'
+    post:
+      tags: [Containers]
+      summary: Create a container
+      operationId: createContainer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateContainerRequest'
+      responses:
+        '201':
+          description: Container created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Container'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/containers/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Container ID or name
+    get:
+      tags: [Containers]
+      summary: Inspect a container
+      operationId: inspectContainer
+      responses:
+        '200':
+          description: Container details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContainerDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Containers]
+      summary: Remove a container
+      operationId: removeContainer
+      parameters:
+        - name: force
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Force remove even if running
+      responses:
+        '204':
+          description: Container removed
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/containers/{id}/stop:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      tags: [Containers]
+      summary: Stop a container
+      operationId: stopContainer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                timeout:
+                  type: integer
+                  default: 10
+                  description: Seconds to wait before killing
+      responses:
+        '200':
+          description: Container stopped
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/containers/{id}/start:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      tags: [Containers]
+      summary: Start a container
+      operationId: startContainer
+      responses:
+        '200':
+          description: Container started
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/containers/{id}/logs:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [Containers]
+      summary: Fetch container logs
+      operationId: getContainerLogs
+      parameters:
+        - name: stdout
+          in: query
+          schema:
+            type: boolean
+            default: true
+        - name: stderr
+          in: query
+          schema:
+            type: boolean
+            default: true
+        - name: tail
+          in: query
+          schema:
+            type: integer
+            default: 100
+          description: Number of lines from the end
+        - name: since
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Only return logs since timestamp
+      responses:
+        '200':
+          description: Log output
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogsResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/containers/{id}/exec:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      tags: [Containers]
+      summary: Execute a command in a running container
+      operationId: execInContainer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecRequest'
+      responses:
+        '200':
+          description: Command output
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/containers/{id}/inspect:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [Containers]
+      summary: Detailed container inspection
+      operationId: detailedInspect
+      responses:
+        '200':
+          description: Full container state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContainerInspect'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/containers/{id}/stats:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [Containers]
+      summary: Get live resource stats for a container
+      operationId: getContainerStats
+      responses:
+        '200':
+          description: Resource usage statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContainerStats'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/images:
+    get:
+      tags: [Images]
+      summary: List local images
+      operationId: listImages
+      responses:
+        '200':
+          description: List of images
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Image'
+
+  /api/images/pull:
+    post:
+      tags: [Images]
+      summary: Pull an image from a registry
+      operationId: pullImage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PullImageRequest'
+      responses:
+        '202':
+          description: Pull started
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/images/build:
+    post:
+      tags: [Images]
+      summary: Build an image from a Dockerfile
+      operationId: buildImage
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [context]
+              properties:
+                context:
+                  type: string
+                  format: binary
+                  description: Tar archive of build context
+                dockerfile:
+                  type: string
+                  default: Dockerfile
+                  description: Path to Dockerfile within context
+                tag:
+                  type: string
+                  description: Tag for the built image
+                buildargs:
+                  type: object
+                  additionalProperties:
+                    type: string
+      responses:
+        '202':
+          description: Build started
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/stats:
+    get:
+      tags: [Stats]
+      summary: Get host system resource usage
+      operationId: getSystemStats
+      responses:
+        '200':
+          description: Host statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemStats'
+
+  /api/metrics:
+    get:
+      tags: [Stats]
+      summary: Get Prometheus-compatible metrics
+      operationId: getMetrics
+      responses:
+        '200':
+          description: Metrics in OpenMetrics text format
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /api/compose:
+    get:
+      tags: [Compose]
+      summary: List running compose stacks
+      operationId: listComposeStacks
+      responses:
+        '200':
+          description: List of stacks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ComposeStack'
+    post:
+      tags: [Compose]
+      summary: Deploy a compose stack
+      operationId: deployComposeStack
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComposeDeployRequest'
+      responses:
+        '201':
+          description: Stack deployed
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/compose/{name}:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      tags: [Compose]
+      summary: Tear down a compose stack
+      operationId: removeComposeStack
+      responses:
+        '204':
+          description: Stack removed
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/volumes:
+    get:
+      tags: [Volumes]
+      summary: List volumes
+      operationId: listVolumes
+      responses:
+        '200':
+          description: List of volumes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Volume'
+    post:
+      tags: [Volumes]
+      summary: Create a volume
+      operationId: createVolume
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVolumeRequest'
+      responses:
+        '201':
+          description: Volume created
+        '409':
+          description: Volume already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/volumes/{name}:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      tags: [Volumes]
+      summary: Remove a volume
+      operationId: removeVolume
+      responses:
+        '204':
+          description: Volume removed
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/secrets:
+    get:
+      tags: [Secrets]
+      summary: List secrets
+      operationId: listSecrets
+      responses:
+        '200':
+          description: List of secrets (names only, values redacted)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Secret'
+    post:
+      tags: [Secrets]
+      summary: Create or update a secret
+      operationId: createSecret
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSecretRequest'
+      responses:
+        '201':
+          description: Secret created
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/secrets/{name}:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [Secrets]
+      summary: Get a secret value
+      operationId: getSecret
+      responses:
+        '200':
+          description: Secret details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Secret'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Secrets]
+      summary: Remove a secret
+      operationId: removeSecret
+      responses:
+        '204':
+          description: Secret removed
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/networks:
+    get:
+      tags: [Networks]
+      summary: List networks
+      operationId: listNetworks
+      responses:
+        '200':
+          description: List of networks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Network'
+    post:
+      tags: [Networks]
+      summary: Create a network
+      operationId: createNetwork
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNetworkRequest'
+      responses:
+        '201':
+          description: Network created
+        '409':
+          description: Network already exists
+
+  /api/networks/{name}:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      tags: [Networks]
+      summary: Remove a network
+      operationId: removeNetwork
+      responses:
+        '204':
+          description: Network removed
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/services:
+    get:
+      tags: [Services]
+      summary: List services
+      operationId: listServices
+      responses:
+        '200':
+          description: List of services
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Service'
+    post:
+      tags: [Services]
+      summary: Create a service
+      operationId: createService
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateServiceRequest'
+      responses:
+        '201':
+          description: Service created
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/services/{name}:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      tags: [Services]
+      summary: Remove a service
+      operationId: removeService
+      responses:
+        '204':
+          description: Service removed
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/services/{name}/scale:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      tags: [Services]
+      summary: Scale a service
+      operationId: scaleService
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScaleServiceRequest'
+      responses:
+        '200':
+          description: Service scaled
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/services/{name}/update:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      tags: [Services]
+      summary: Update a service configuration
+      operationId: updateService
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateServiceRequest'
+      responses:
+        '200':
+          description: Service updated
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /ws/events:
+    get:
+      tags: [Events]
+      summary: Real-time event stream
+      operationId: streamEvents
+      description: WebSocket endpoint that pushes container lifecycle events (create, start, stop, die, OOM, etc.) in real time.
+      responses:
+        '101':
+          description: Upgrade to WebSocket connection
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, version]
+      properties:
+        status:
+          type: string
+          example: ok
+        version:
+          type: string
+          example: "1.0.0"
+        uptime:
+          type: string
+          example: "2h30m15s"
+
+    Container:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "a1b2c3d4e5f6"
+        name:
+          type: string
+          example: "web-1"
+        image:
+          type: string
+          example: "nginx:alpine"
+        status:
+          type: string
+          enum: [created, running, paused, stopped, exited]
+          example: running
+        state:
+          type: string
+          enum: [running, stopped]
+          example: running
+        pid:
+          type: integer
+          example: 12345
+        created:
+          type: string
+          format: date-time
+        ports:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortMapping'
+
+    ContainerDetail:
+      allOf:
+        - $ref: '#/components/schemas/Container'
+        - type: object
+          properties:
+            config:
+              $ref: '#/components/schemas/ContainerConfig'
+            state:
+              $ref: '#/components/schemas/ContainerState'
+            mounts:
+              type: array
+              items:
+                $ref: '#/components/schemas/Mount'
+            network_settings:
+              $ref: '#/components/schemas/NetworkSettings'
+
+    ContainerConfig:
+      type: object
+      properties:
+        hostname:
+          type: string
+        env:
+          type: array
+          items:
+            type: string
+        cmd:
+          type: array
+          items:
+            type: string
+        working_dir:
+          type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+
+    ContainerState:
+      type: object
+      properties:
+        status:
+          type: string
+        running:
+          type: boolean
+        pid:
+          type: integer
+        exit_code:
+          type: integer
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+        oom_killed:
+          type: boolean
+
+    Mount:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [bind, volume, tmpfs]
+        source:
+          type: string
+        destination:
+          type: string
+        rw:
+          type: boolean
+
+    NetworkSettings:
+      type: object
+      properties:
+        networks:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/EndpointSettings'
+        ports:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              $ref: '#/components/schemas/PortBinding'
+
+    EndpointSettings:
+      type: object
+      properties:
+        ip_address:
+          type: string
+        gateway:
+          type: string
+        mac_address:
+          type: string
+
+    PortMapping:
+      type: object
+      properties:
+        host_port:
+          type: integer
+        container_port:
+          type: integer
+        protocol:
+          type: string
+          enum: [tcp, udp]
+          default: tcp
+
+    PortBinding:
+      type: object
+      properties:
+        host_ip:
+          type: string
+        host_port:
+          type: integer
+
+    CreateContainerRequest:
+      type: object
+      required: [image]
+      properties:
+        image:
+          type: string
+          description: Image reference (e.g. "alpine:3.19")
+        name:
+          type: string
+          description: Optional container name
+        cmd:
+          type: array
+          items:
+            type: string
+          description: Command to run
+        env:
+          type: array
+          items:
+            type: string
+          description: Environment variables (KEY=VALUE)
+        ports:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortMapping'
+        volumes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Mount'
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        hostname:
+          type: string
+        working_dir:
+          type: string
+        restart_policy:
+          type: string
+          enum: [no, always, on-failure]
+          default: no
+        cpu_shares:
+          type: integer
+          description: CPU shares (relative weight)
+        memory:
+          type: integer
+          description: Memory limit in bytes
+        pids_limit:
+          type: integer
+          description: Max number of PIDs
+
+    ExecRequest:
+      type: object
+      required: [cmd]
+      properties:
+        cmd:
+          type: array
+          items:
+            type: string
+          description: Command to execute
+        tty:
+          type: boolean
+          default: false
+        working_dir:
+          type: string
+        env:
+          type: array
+          items:
+            type: string
+
+    ExecResponse:
+      type: object
+      properties:
+        exit_code:
+          type: integer
+        stdout:
+          type: string
+        stderr:
+          type: string
+
+    ContainerInspect:
+      type: object
+      properties:
+        id:
+          type: string
+        created:
+          type: string
+          format: date-time
+        path:
+          type: string
+        args:
+          type: array
+          items:
+            type: string
+        state:
+          $ref: '#/components/schemas/ContainerState'
+        config:
+          $ref: '#/components/schemas/ContainerConfig'
+        host_config:
+          type: object
+          properties:
+            network_mode:
+              type: string
+            restart_policy:
+              type: object
+            pid_mode:
+              type: string
+            ipc_mode:
+              type: string
+            cap_add:
+              type: array
+              items:
+                type: string
+            cap_drop:
+              type: array
+              items:
+                type: string
+            devices:
+              type: array
+              items:
+                type: object
+        network_settings:
+          $ref: '#/components/schemas/NetworkSettings'
+        mounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Mount'
+
+    ContainerStats:
+      type: object
+      properties:
+        cpu_stats:
+          type: object
+          properties:
+            cpu_usage:
+              type: object
+              properties:
+                total_usage:
+                  type: integer
+                percpu_usage:
+                  type: array
+                  items:
+                    type: integer
+            system_cpu_usage:
+              type: integer
+            online_cpus:
+              type: integer
+        memory_stats:
+          type: object
+          properties:
+            usage:
+              type: integer
+            limit:
+              type: integer
+            max_usage:
+              type: integer
+            cache:
+              type: integer
+        network:
+          type: object
+          properties:
+            rx_bytes:
+              type: integer
+            tx_bytes:
+              type: integer
+        pids_stats:
+          type: object
+          properties:
+            current:
+              type: integer
+
+    LogsResponse:
+      type: object
+      properties:
+        logs:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+              stream:
+                type: string
+                enum: [stdout, stderr]
+              line:
+                type: string
+
+    Image:
+      type: object
+      properties:
+        id:
+          type: string
+        repository:
+          type: string
+        tag:
+          type: string
+        size:
+          type: integer
+          description: Size in bytes
+        created:
+          type: string
+          format: date-time
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+
+    PullImageRequest:
+      type: object
+      required: [image]
+      properties:
+        image:
+          type: string
+          description: Full image reference (e.g. "docker.io/library/alpine:3.19")
+        tag:
+          type: string
+          default: latest
+        platform:
+          type: string
+          default: linux/amd64
+
+    SystemStats:
+      type: object
+      properties:
+        cpu:
+          type: object
+          properties:
+            cores:
+              type: integer
+            usage_percent:
+              type: number
+              format: float
+        memory:
+          type: object
+          properties:
+            total:
+              type: integer
+            used:
+              type: integer
+            available:
+              type: integer
+            percent_used:
+              type: number
+              format: float
+        disk:
+          type: object
+          properties:
+            total:
+              type: integer
+            used:
+              type: integer
+            available:
+              type: integer
+            percent_used:
+              type: number
+              format: float
+        containers:
+          type: object
+          properties:
+            running:
+              type: integer
+            stopped:
+              type: integer
+            paused:
+              type: integer
+
+    ComposeStack:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum: [running, stopped, partial]
+        services:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              replicas:
+                type: integer
+              image:
+                type: string
+              status:
+                type: string
+
+    ComposeDeployRequest:
+      type: object
+      required: [name, services]
+      properties:
+        name:
+          type: string
+        services:
+          type: array
+          items:
+            type: object
+            required: [name, image]
+            properties:
+              name:
+                type: string
+              image:
+                type: string
+              command:
+                type: array
+                items:
+                  type: string
+              ports:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PortMapping'
+              environment:
+                type: array
+                items:
+                  type: string
+              replicas:
+                type: integer
+                default: 1
+              volumes:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Mount'
+
+    Volume:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "my-data"
+        driver:
+          type: string
+          default: local
+        mountpoint:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+
+    CreateVolumeRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        driver:
+          type: string
+          default: local
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+
+    Secret:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "db-password"
+        created_at:
+          type: string
+          format: date-time
+
+    CreateSecretRequest:
+      type: object
+      required: [name, value]
+      properties:
+        name:
+          type: string
+        value:
+          type: string
+          format: password
+          description: Secret value (will be stored encrypted)
+
+    Network:
+      type: object
+      properties:
+        name:
+          type: string
+        driver:
+          type: string
+          enum: [bridge, host, none, overlay]
+        subnet:
+          type: string
+          example: "172.20.0.0/16"
+        gateway:
+          type: string
+          example: "172.20.0.1"
+        containers:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              ipv4_address:
+                type: string
+
+    CreateNetworkRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        driver:
+          type: string
+          enum: [bridge, host, none, overlay]
+          default: bridge
+        subnet:
+          type: string
+          description: CIDR block (e.g. "172.20.0.0/16")
+        gateway:
+          type: string
+        internal:
+          type: boolean
+          default: false
+
+    Service:
+      type: object
+      properties:
+        name:
+          type: string
+        image:
+          type: string
+        replicas:
+          type: integer
+          example: 3
+        running:
+          type: integer
+          example: 3
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateServiceRequest:
+      type: object
+      required: [name, image]
+      properties:
+        name:
+          type: string
+        image:
+          type: string
+        replicas:
+          type: integer
+          default: 1
+        command:
+          type: array
+          items:
+            type: string
+        env:
+          type: array
+          items:
+            type: string
+        ports:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortMapping'
+        update_config:
+          type: object
+          properties:
+            parallelism:
+              type: integer
+            delay:
+              type: string
+              description: Delay between updates (e.g. "5s")
+            failure_action:
+              type: string
+              enum: [continue, rollback, pause]
+
+    ScaleServiceRequest:
+      type: object
+      required: [replicas]
+      properties:
+        replicas:
+          type: integer
+          minimum: 0
+
+    UpdateServiceRequest:
+      type: object
+      properties:
+        image:
+          type: string
+        replicas:
+          type: integer
+        command:
+          type: array
+          items:
+            type: string
+        env:
+          type: array
+          items:
+            type: string
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+        code:
+          type: integer
+          description: Machine-readable error code
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "invalid request body"
+            code: 400
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "container not found"
+            code: 404
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "internal server error"
+            code: 500
